@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package example;
+
+option go_package="storepb";
+
+message StoreMessage{
+    string content=1;
+    string account=2;
+}
+
+message StoreRequest {
+    StoreMessage msg = 1;
+}
+
+message StoreResponse {
+    string result = 1;
+}
+
+
+service StoreService {
+    rpc Store(StoreRequest) returns (StoreResponse) {};
+}

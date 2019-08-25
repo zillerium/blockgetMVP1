@@ -25,18 +25,22 @@ import (
 type server struct{}
 
 type StoreData struct {
-	Account string `json:"account"`
-	Content     string `json:"content"`
-	CID     string `json:"cid"`
+        Account string `json:"account"`
+        Content     string `json:"content"`
+        CID     string `json:"cid"`
+        ID int32 `json:"id"`
+        Parent string `json:"parent"`
 }
-
 
 func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.StoreResponse, error) {
 	fmt.Printf("store was invoked by %v ", req)
 
 	content := req.GetMsg().GetContent()
 	account := req.GetMsg().GetAccount()
-	result := "content " + content + " " + account
+    //    id := req.GetMsg().GetId()
+     //   parent := req.GetMsg().GetParent()
+
+	result := "content " + content + " " + account 
 	res := &storepb.StoreResponse{
 		Result: result,
 	}
@@ -69,11 +73,16 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
                 }
                 content := req.GetMsg().GetContent()
                 account := req.GetMsg().GetAccount()
+		id := req.GetMsg().GetId()
+	        parent := req.GetMsg().GetParent()
+
                 result +=" "+  content + " " + account
        			var a StoreData
         		a.Account = account
         		a.Content = content
         		a.CID = "none"
+			a.Parent = parent
+			a.ID = id
         		storeBTFS(&a)
 
 
@@ -113,7 +122,7 @@ func handleRequests() {
 
 func storeBTFS(bd *StoreData) {
     content := bd.Content
-    fmt.Printf("\nstore value : %s", content)
+    //fmt.Printf("\nstore value : %s", content)
 
     sh := shell.NewShell("localhost:5001")
 //  r:=[]byte(content)
@@ -123,6 +132,9 @@ func storeBTFS(bd *StoreData) {
         fmt.Printf("\nerror: %s", err)
     } else {
         fmt.Printf("\n worked: %s ", cid)
+	 fmt.Printf("\n worked: %s ", bd.Parent)
+ fmt.Printf("\n worked: %d ", bd.ID)
+
         bd.CID = cid
     }
 

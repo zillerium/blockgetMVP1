@@ -30,7 +30,7 @@ type StoreData struct {
 
 
 func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.StoreResponse, error) {
-        fmt.Printf("audit was invoked by %v ", req)
+        fmt.Printf("store was invoked by %v ", req)
 
         content := req.GetMsg().GetContent()
         account := req.GetMsg().GetAccount()
@@ -43,17 +43,58 @@ func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.S
 
 
 
-
-
 func handleRequests() {
 	storeBTFS()
 
 }
 
-func storeBTFS() {
-	content := "This is a test message from, trevor"
+func clientStreaming(c storepb.StoreServiceClient) {
 
-        cc, err := grpc.Dial("localhost:50052", grpc.WithInsecure())
+	fmt.Println("starting client")
+
+	requests := []*storepb.LongStoreRequest{
+		&storepb.LongStoreRequest{
+                	Msg: &storepb.StoreMessage{
+                        	Content: "message1",
+                        	Account:  "trevor3",
+                	},
+		},	
+     		 &storepb.LongStoreRequest{
+                        Msg: &storepb.StoreMessage{
+                                Content: "message2",
+                                Account:  "trevor3",
+                        },
+                }, 
+		&storepb.LongStoreRequest{
+                        Msg: &storepb.StoreMessage{
+                                Content: "message3",
+                                Account:  "trevor3",
+                        },
+                },
+	}
+
+	stream, err := c.LongStore(context.Background())	
+	if err!=nil {
+		log.Fatalf("error client stream %v", err)
+	}
+
+	for _, req := range requests {
+      		stream.Send(req)
+	}
+
+	res, err := stream.CloseAndRecv()
+    	if err!=nil {
+                log.Fatalf("error client stream %v", err)
+        }
+	fmt.Printf("long store response %v", res)
+
+
+}
+
+func storeBTFS() {
+//	content := "This is a test message from, trevor"
+
+        cc, err := grpc.Dial("54.92.219.108:50052", grpc.WithInsecure())
 
         if err != nil {
                 log.Fatalf("could not connect: %w", err)
@@ -63,9 +104,11 @@ func storeBTFS() {
 
         c := storepb.NewStoreServiceClient(cc)
 
+	clientStreaming(c)
+
         log.Printf("created client: %f", c)
 
-        fmt.Println("Starting unary RPC")
+    /*    fmt.Println("Starting unary RPC")
         req := &storepb.StoreRequest{
                 Msg: &storepb.StoreMessage{
                         Content: content,
@@ -79,7 +122,7 @@ func storeBTFS() {
         }
 
         log.Printf("response from Store %v", res.Result)
-
+*/
 //	fmt.Printf("\ncid: %s", cid)
 }
 

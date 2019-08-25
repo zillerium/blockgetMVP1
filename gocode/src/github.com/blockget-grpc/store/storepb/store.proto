@@ -17,7 +17,18 @@ message StoreResponse {
     string result = 1;
 }
 
+message LongStoreRequest {
+	StoreMessage msg = 1;
+}
+
+message LongStoreResponse {
+	string result = 1;
+}
 
 service StoreService {
     rpc Store(StoreRequest) returns (StoreResponse) {};
+
+	//client streaming
+	rpc LongStore(stream LongStoreRequest) returns (LongStoreResponse) {};
 }
+

@@ -6,7 +6,7 @@ import (
 	"context"
 //	"encoding/json"
 	"fmt"
-//	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 //	"net/url"
@@ -45,10 +45,42 @@ func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.S
 	a.Account = account
 	a.Content = content
 	a.CID = "none"
-	storeBTFS(&a)
+	storeBTFSFull(&a)
 
 	return res, nil
 }
+
+func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
+        fmt.Printf("long store was invoked  ")
+        
+        result := ""
+
+        for {
+                req, err := stream.Recv()
+                if err == io.EOF {
+                        // end of stream
+                        return stream.SendAndClose(&storepb.LongStoreResponse{
+                                Result: result,
+                        })
+
+                }
+                if err !=nil {
+                        log.Fatalf("Error while stream: %v ", err)
+                }
+                content := req.GetMsg().GetContent()
+                account := req.GetMsg().GetAccount()
+                result +=" "+  content + " " + account
+       			var a StoreData
+        		a.Account = account
+        		a.Content = content
+        		a.CID = "none"
+        		storeBTFS(&a)
+
+
+        }
+}
+
+
 
 
 
@@ -80,6 +112,23 @@ func handleRequests() {
 }
 
 func storeBTFS(bd *StoreData) {
+    content := bd.Content
+    fmt.Printf("\nstore value : %s", content)
+
+    sh := shell.NewShell("localhost:5001")
+//  r:=[]byte(content)
+    r:=strings.NewReader(content)
+    cid, err := sh.Add(r)
+    if err != nil {
+        fmt.Printf("\nerror: %s", err)
+    } else {
+        fmt.Printf("\n worked: %s ", cid)
+        bd.CID = cid
+    }
+
+}
+
+func storeBTFSFull(bd *StoreData) {
 
 	content := bd.Content
 	fmt.Printf("\nstore value : %s", content)

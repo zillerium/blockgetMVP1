@@ -5,13 +5,12 @@ import (
 	"context"
 //	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 //	"net/http"
 //	"net/url"
 //	"strconv"
-"crypto/sha256"
-"encoding/hex"
+
 //	"github.com/gorilla/mux"
 //	shell "github.com/ipfs/go-ipfs-api"
 //	webFile "github.com/ipfs/go-ipfs-files"
@@ -51,7 +50,7 @@ func handleRequests() {
 
 }
 
-func buildRequest(s []string, hash string) []*storepb.LongStoreRequest {
+func buildRequest(s []string) []*storepb.LongStoreRequest {
 //	ss:= []storepb.LongStoreRequest
 // int32 i =0
 //stringv := s[0]
@@ -76,7 +75,7 @@ for i,str:=range s {
                   Msg: &storepb.StoreMessage{
                             Content: str,
                             Account:  "trevor3",
-                            Parent: hash,
+                            Parent: "parentrec",
                             Id: int32(i),
                     }})
 }
@@ -85,11 +84,44 @@ return ss
 
 }
 
-func clientStreaming(c storepb.StoreServiceClient, s []string, hash string) {
+func readStreaming(c storepb.StoreServiceClient, hashcode string) {
+	 fmt.Println("starting client wait for server streaming")
+	 str:="hashcode" 
+req := &storepb.SendManyTimesRequest {
+	       Msg: &storepb.StoreMessage{
+                            Content: str,
+                            Account:  "trevor3",
+                            Parent: "parentrec",
+                            Id: int32(0),
+                    }}
+
+
+	
+       stream, err := c.SendManyTimes(context.Background(), req)        
+        if err!=nil {
+                log.Fatalf("error client stream %v", err)
+        }
+	for {
+		msg, err := stream.Recv()
+		if (err==io.EOF) {
+			break
+		}
+		if err!=nil {
+                	log.Fatalf("error client stream %v", err)
+	        }
+		log.Printf("response from sendmanytimes %v", msg.GetResult())
+
+	}
+	
+
+} 
+
+
+func clientStreaming(c storepb.StoreServiceClient, s []string) {
 
 	fmt.Println("starting client")
 
-	requests := buildRequest(s, hash)
+	requests := buildRequest(s)
 
 	stream, err := c.LongStore(context.Background())	
 	if err!=nil {
@@ -132,25 +164,7 @@ func splitString(s string, n int) []string {
 func storeBTFS() {
 //	content := "This is a test message from, trevor"
 
-	dat, err := ioutil.ReadFile("sample.pdf")
-    
-	if err!=nil {
-                log.Fatalf("error opening file %v", err)
-        }
-aStringToHash := []byte(string(dat))
-	sha256Bytes := sha256.Sum256(aStringToHash)
- hash := hex.EncodeToString(sha256Bytes[:])
-	l:=len(string(dat))
-	blocksize := 8192
-	segments := l/blocksize
-	segments++
-
-	subs:=splitString(string(dat),blocksize)
 	
-	fmt.Print(len(string(dat)))
-	fmt.Print(" segments %d\n ", segments)
-fmt.Print(" len array subs %d\n ", len(subs))
-
 
  	
 	cc, err := grpc.Dial("54.92.219.108:50052", grpc.WithInsecure())
@@ -162,8 +176,8 @@ fmt.Print(" len array subs %d\n ", len(subs))
         defer cc.Close()
 
         c := storepb.NewStoreServiceClient(cc)
-
-	clientStreaming(c, subs, hash)
+	hashcode:= "parentrec"
+	readStreaming(c, hashcode)
 
         log.Printf("created client: %f", c)
 

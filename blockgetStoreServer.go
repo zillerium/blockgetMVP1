@@ -1,7 +1,8 @@
 package main
 
 import (
-//	"bytes"
+	"bytes"
+"sort"
 	"strings"
 	"context"
 	"encoding/json"
@@ -40,6 +41,7 @@ type hashcontent struct {
 	Account    string          `json:"account"`
 }
 
+
 func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.StoreResponse, error) {
 	fmt.Printf("store was invoked by %v ", req)
 
@@ -62,19 +64,108 @@ func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.S
 	return res, nil
 }
 
+  type hashIndex struct {
+       Hash string
+       Index int
+  }
+   
+  type ByIndex []hashIndex
+
+
+func (a ByIndex) Len() int           { return len(a) }
+func (a ByIndex) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByIndex) Less(i, j int) bool { return a[i].Index < a[j].Index }
+
 func (*server) SendManyTimes(req *storepb.SendManyTimesRequest, stream storepb.StoreService_SendManyTimesServer) error {
 
 		 fmt.Printf("send many times invoked ")
 // read testfile then btfs content and return
-	    content := req.GetMsg().GetContent()
-            account := req.GetMsg().GetAccount()
-            id := req.GetMsg().GetId()
-            parent := req.GetMsg().GetParent()
-	    for i:=0; i<10; i++ {
-		    id1:=int(id)
-		result := content + " " + account + " " + strconv.Itoa(id1) + " " + parent
+	   // content := req.GetMsg().GetContent()
+         //   account := req.GetMsg().GetAccount()
+           // id := req.GetMsg().GetId()
+//            parent := req.GetMsg().GetParent()
+
+		dat, err := ioutil.ReadFile("testfile")
+        if err !=nil {
+                   log.Fatalf("failed to open  %w", err)
+           } 
+    	storeJson := make(map[string]interface{})
+    	storeJson["parent"] = ""
+		storeJson["account"] = ""
+    	storeJson["hashes"] = ""
+ 
+
+    	fmt.Printf(string(dat))
+		json.Unmarshal([]byte(dat), &storeJson)
+
+		fmt.Printf("send many times invoked %s ", storeJson["account"])
+
+  //      var m  map[string]interface{}
+
+//		json.Unmarshal([]byte(storeJson["hashes"]), &m)
+	//	m = storeJson["hashes"].(map[string]string)
+         
+		hashes := storeJson["hashes"].(map[string]interface{})
+
+//    	fmt.Printf("send many times invoked %s ", m)
+
+var indArray ByIndex
+
+for key, value := range hashes {
+   	// Each value is an interface{} type, that is type asserted as a string
+   	fmt.Println(key, value.(string))
+	x, err:=strconv.Atoi(key)
+    if err !=nil {
+ 	   log.Fatalf("failed to open  %w", err)
+    } 
+
+  	s := hashIndex{Hash: value.(string), Index:x}
+	indArray = append(indArray,s)
+}
+
+sort.Sort(ByIndex(indArray))
+
+fmt.Println(indArray)
+
+ sh := shell.NewShell("localhost:5001")
+
+//n:=0
+//QmXEQPcQsPfGfFoannQG9jiH84P1BxwVAJ5sLapZDZfvWp
+ for _, elem := range indArray {
+//         elem.Hash
+	fmt.Printf("hash code  %s ", elem.Hash)
+	rc, err := sh.Cat(fmt.Sprintf("/ipfs/%s",elem.Hash))
+
+      // cid,err := sh.Cat(elem.Hash)
+	if err!=nil {
+		 fmt.Printf("\nerror: %s ", err)
+	}
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(rc)
+	fileBytes := buf.String()
+
+//	fmt.Printf("%+v", fileBytes)
+
+
+
+//birdJson := `{"birds":{"pigeon":"likes to perch on rocks","eagle":"bird of prey"},"animals":"none"}`
+//var result map[string]interface{}
+//json.Unmarshal([]byte(birdJson), &result)
+
+// The object stored in the "birds" key is also stored as 
+// a map[string]interface{} type, and its type is asserted from
+// the interface{} type
+//birds := result["birds"].(map[string]interface{})
+
+//for key, value := range birds {
+  // Each value is an interface{} type, that is type asserted as a string
+  //fmt.Println(key, value.(string))
+//}
+
+	//	    id1:=int(id)
+	//	result := content + " " + account + " " + strconv.Itoa(id1) + " " + parent
 		res := &storepb.SendManyTimesResponse {
-			Result: result,
+			Result: fileBytes,
 		}
 		stream.Send(res)
 	    }
@@ -87,6 +178,10 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
         fmt.Printf("long store was invoked  ")
         
     storeJson := make(map[string]interface{})
+
+
+     sh := shell.NewShell("localhost:5001")
+ //  r:=[]byte(content)
 
         result := ""
       	var b hashcontent
@@ -132,7 +227,7 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
                 content := req.GetMsg().GetContent()
                 account := req.GetMsg().GetAccount()
 				id := req.GetMsg().GetId()
-	       		 parent := req.GetMsg().GetParent()
+	       		parent := req.GetMsg().GetParent()
 
                 result +=" "+  content + " " + account
        			var a StoreData
@@ -148,9 +243,20 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
  
 
 	
-        		storeBTFS(&a)
-				m[strconv.Itoa(int(id))]=a.CID
+//        		storeBTFS(&a)
 
+  			    r:=strings.NewReader(content)
+   				cid, err := sh.Add(r)
+   				if err != nil {
+         	 		fmt.Printf("\nerror: %s", err)
+     			} else {
+					a.CID = cid
+					m[strconv.Itoa(int(id))]=a.CID
+      			}
+
+
+//				m[strconv.Itoa(int(id))]=a.CID
+//				m[int(id)] = a.CID
 
         }
 	 	return nil

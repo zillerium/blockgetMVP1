@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+  	"io/ioutil"
 //	"net/http"
 //	"net/url"
 //	"strconv"
@@ -96,11 +97,12 @@ req := &storepb.SendManyTimesRequest {
                     }}
 
 
-	
+	fileout:=""
        stream, err := c.SendManyTimes(context.Background(), req)        
         if err!=nil {
                 log.Fatalf("error client stream %v", err)
         }
+
 	for {
 		msg, err := stream.Recv()
 		if (err==io.EOF) {
@@ -109,10 +111,16 @@ req := &storepb.SendManyTimesRequest {
 		if err!=nil {
                 	log.Fatalf("error client stream %v", err)
 	        }
-		log.Printf("response from sendmanytimes %v", msg.GetResult())
-
+//		log.Printf("response from sendmanytimes %v", msg.GetResult())
+        fileout += msg.GetResult()
 	}
-	
+
+	  log.Printf("response from sendmanytimes %v",fileout)
+	d1 := []byte(fileout)
+ 	errx := ioutil.WriteFile("outsample.pdf", d1, 0644)
+    if errx!=nil {
+    	log.Fatalf("error client stream %v", errx)
+    }
 
 } 
 

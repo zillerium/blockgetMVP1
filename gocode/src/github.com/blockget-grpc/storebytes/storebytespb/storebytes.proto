@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package example;
 
-option go_package="storepb";
+option go_package="storebytespb";
 
 message StoreMessage{
-    string content=1;
+    bytes content=1;
     string account=2;
     int32 id=3;
 	string parent=4;
@@ -16,7 +16,7 @@ message StoreRequest {
 }
 
 message StoreResponse {
-    string result = 1;
+    bytes result = 1;
 }
 
 message LongStoreRequest {
@@ -24,7 +24,7 @@ message LongStoreRequest {
 }
 
 message LongStoreResponse {
-	string result = 1;
+	bytes result = 1;
 }
 
 message SendManyTimesRequest {
@@ -32,7 +32,7 @@ message SendManyTimesRequest {
 }
 
 message SendManyTimesResponse {
-	string result = 1;
+	bytes result = 1;
 }
 
 service StoreService {

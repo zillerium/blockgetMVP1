@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+//"encoding/base64"
 "sort"
-	"strings"
+"reflect"
+//	"strings"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,7 +21,7 @@ import (
 //	webFile "github.com/ipfs/go-ipfs-files"
 
 		"net"
-	"github.com/blockget-grpc/store/storepb"
+	"github.com/blockget-grpc/storebytes/storebytespb"
 	"github.com/blockget-grpc/audit/auditpb"
 	"google.golang.org/grpc"
 )
@@ -28,7 +30,7 @@ type server struct{}
 
 type StoreData struct {
         Account string `json:"account"`
-        Content     string `json:"content"`
+Content []byte `json:"content"`
         CID     string `json:"cid"`
         ID int32 `json:"id"`
         Parent string `json:"parent"`
@@ -42,17 +44,18 @@ type hashcontent struct {
 }
 
 
-func (*server) Store(ctx context.Context, req *storepb.StoreRequest) (*storepb.StoreResponse, error) {
+func (*server) Store(ctx context.Context, req *storebytespb.StoreRequest) (*storebytespb.StoreResponse, error) {
 	fmt.Printf("store was invoked by %v ", req)
 
 	content := req.GetMsg().GetContent()
 	account := req.GetMsg().GetAccount()
+fmt.Println("account %s", account)
     //    id := req.GetMsg().GetId()
      //   parent := req.GetMsg().GetParent()
-
-	result := "content " + content + " " + account 
-	res := &storepb.StoreResponse{
-		Result: result,
+//	s := string([]byte{content})
+//	result := "content " + s+ " " + account 
+	res := &storebytespb.StoreResponse{
+		Result: content,
 	}
 
 	var a StoreData
@@ -76,7 +79,7 @@ func (a ByIndex) Len() int           { return len(a) }
 func (a ByIndex) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByIndex) Less(i, j int) bool { return a[i].Index < a[j].Index }
 
-func (*server) SendManyTimes(req *storepb.SendManyTimesRequest, stream storepb.StoreService_SendManyTimesServer) error {
+func (*server) SendManyTimes(req *storebytespb.SendManyTimesRequest, stream storebytespb.StoreService_SendManyTimesServer) error {
 
 		 fmt.Printf("send many times invoked ")
 // read testfile then btfs content and return
@@ -140,9 +143,21 @@ fmt.Println(indArray)
 	if err!=nil {
 		 fmt.Printf("\nerror: %s ", err)
 	}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(rc)
-	fileBytes := buf.String()
+//	buf := new(bytes.Buffer)
+//	buf.ReadFrom(rc)
+//	byteArray, err1 = w.Write(buf.Bytes())
+
+ //   if err1!=nil {
+ //         fmt.Printf("\nerror: %s ", err1)
+ //   }
+   var foo = []byte { 0, 0, 0, 0, 0  }
+
+ fmt.Println(reflect.TypeOf(rc))
+
+// buf := []byte(rc)
+
+
+// used when strings were used	fileBytes := buf.String()
 
 //	fmt.Printf("%+v", fileBytes)
 
@@ -164,8 +179,8 @@ fmt.Println(indArray)
 
 	//	    id1:=int(id)
 	//	result := content + " " + account + " " + strconv.Itoa(id1) + " " + parent
-		res := &storepb.SendManyTimesResponse {
-			Result: fileBytes,
+		res := &storebytespb.SendManyTimesResponse {
+			Result: foo,
 		}
 		stream.Send(res)
 	    }
@@ -174,7 +189,7 @@ fmt.Println(indArray)
 }
 
 
-func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
+func (*server) LongStore(stream storebytespb.StoreService_LongStoreServer) error {
         fmt.Printf("long store was invoked  ")
         
     storeJson := make(map[string]interface{})
@@ -183,7 +198,7 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
      sh := shell.NewShell("localhost:5001")
  //  r:=[]byte(content)
 
-        result := ""
+    //    result := ""
       	var b hashcontent
 		m := make(map[string]string)
         for {
@@ -216,8 +231,8 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
                     }//if
 
                         // end of stream
-                        return stream.SendAndClose(&storepb.LongStoreResponse{
-                                Result: result,
+                        return stream.SendAndClose(&storebytespb.LongStoreResponse{
+                                Result: d1,
                         })
 
                 }
@@ -229,7 +244,7 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
 				id := req.GetMsg().GetId()
 	       		parent := req.GetMsg().GetParent()
 
-                result +=" "+  content + " " + account
+//                result +=" "+  content + " " + account
        			var a StoreData
         		a.Account = account
         		a.Content = content
@@ -245,7 +260,7 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
 	
 //        		storeBTFS(&a)
 
-  			    r:=strings.NewReader(content)
+  			    r:=bytes.NewReader(content)
    				cid, err := sh.Add(r)
    				if err != nil {
          	 		fmt.Printf("\nerror: %s", err)
@@ -263,6 +278,18 @@ func (*server) LongStore(stream storepb.StoreService_LongStoreServer) error {
 }
 
 
+//func Add(data []byte) (string, error) {
+	// my have ipfs daemon running first
+//	shell := ipfs.NewLocalShell()
+
+//	reader := bytes.NewReader(data)
+//	hash, err := shell.Add(reader)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+
+//	return hash, nil
+//}
 
 
 
@@ -283,7 +310,7 @@ func handleRequests() {
 			fmt.Printf("listening on 50052")
 	      }
 	       s :=grpc.NewServer()
-	       storepb.RegisterStoreServiceServer(s, &server{})
+	       storebytespb.RegisterStoreServiceServer(s, &server{})
 	       if err:=s.Serve(lis); err !=nil {
 	               log.Fatalf("failed to serve %w", err)
 
@@ -296,18 +323,18 @@ func handleRequests() {
 func storeBTFS(bd *StoreData) {
     content := bd.Content
     //fmt.Printf("\nstore value : %s", content)
+     r:=bytes.NewReader(content)
 
     sh := shell.NewShell("localhost:5001")
-//  r:=[]byte(content)
-    r:=strings.NewReader(content)
+//	r:=[]byte(content)
+//    r:=strings.NewReader(content)
     cid, err := sh.Add(r)
     if err != nil {
         fmt.Printf("\nerror: %s", err)
     } else {
         fmt.Printf("\n worked: %s ", cid)
-	 fmt.Printf("\n worked: %s ", bd.Parent)
- fmt.Printf("\n worked: %d ", bd.ID)
-
+		fmt.Printf("\n worked: %s ", bd.Parent)
+ 		fmt.Printf("\n worked: %d ", bd.ID)
         bd.CID = cid
     }
     //bd.ID
@@ -323,7 +350,7 @@ func storeBTFSFull(bd *StoreData) {
 
 	sh := shell.NewShell("localhost:5001")
 //	r:=[]byte(content)
-	r:=strings.NewReader(content)
+	r:=bytes.NewReader(content)
 	cid, err := sh.Add(r)
 	if err != nil {
 		fmt.Printf("\nerror: %s", err)
